@@ -13,7 +13,7 @@ if(!class_exists('Azad_Plugin_Activation')){
         protected $has_forced_activation = false;
         protected $has_forced_deactivation = false;
         public $id = 'apa';
-        protected $menu = 'azad-install-plugins';
+        protected $menu = 'apa-install-plugins';
         public $parent_slug = 'themes.php';
         public $capability = 'edit_theme_options';
         public $default_path = '';        
@@ -65,19 +65,53 @@ if(!class_exists('Azad_Plugin_Activation')){
                     'This following recommended plugins are currently inactive: %1$s.',
                     'apa'
                 ),
+                'install_link' => _n_noop(
+                    'Begin installing plugin',
+                    'Begin installing plugins',
+                    'apa'
+                ),
+                'update_link' => _n_noop(
+                    'Begin updating plugin',
+                    'Begin updating plugins',
+                    'apa'
+                ),
+                'activate_link' => _n_noop(
+                    'Begin activating plugin',
+                    'Begin activating plugins',
+                    'apa'
+                ),
                 'dashboard' => __('Return to the dashboard.','apa'),
                 'notice_cannot_install_activate' => __('There are one or more required or recommended plugins to install, update or activate.','apa'),
+                'dismiss' => __('Dismiss this notice.','apa'),
                 'contact_admin' => __('Please contact the administrator of this site for help.','apa')
             );
             do_action('apa_register');
-            //echo $installed_plugins['gutenberg/gutenberg.php']['Name'];
-            $this->get_info_link($slug);
+            // Write a function here..
             if(empty($this->plugins) || ! is_array($this->plugins)){
                 return;
             }
-            add_action('admin_notices',array($this,'notices'));
+            
             add_action('admin_menu',array($this,'admin_menu'));
-            add_action('admin_init',array($this,'admin_init'));
+            //add_action('admin_head',array($this,'dismiss'));
+            
+            if($this->has_notices){
+                add_action('admin_notices',array($this,'notices'));
+                add_action('admin_init',array($this,'admin_init'));
+                //add_action('admin_enqueue_scripts',array($this,'thickbox'));
+            }
+
+            // Setup the force activation hook
+            if(true === $this->has_forced_activation){
+                add_action('admin_init',array($this,'force_activation'));
+            }            
+
+            // Setup force deactivation hook
+            if(true === $this->has_forced_deactivation){
+                add_action('switch_theme',array($this,'force_deactivation'));
+            }
+
+            // Add css for the APA admin page
+            //add_action('admin_head',array($this,'admin_css'));
         }
         public function load_textdomain(){}
         public function correct_plugin_mofile(){}
@@ -139,9 +173,12 @@ if(!class_exists('Azad_Plugin_Activation')){
             $total_required_action_count = 0;
 
             if($this->is_apa_page()){
-                //return;
+                return;
             }
             foreach($this->plugins as $slug=>$plugin){
+                if($this->is_plugin_active($slug)){
+                    continue;
+                }
                 if(! $this->is_plugin_installed($slug)){
                     if(current_user_can('install_plugins')){
                         $install_link_count++;
@@ -150,9 +187,9 @@ if(!class_exists('Azad_Plugin_Activation')){
                         }else{
                             $message['notice_can_install_recommended'][] = $slug;
                         }
-                        if(true===$plugin['required']){
-                            $total_required_action_count++;
-                        }
+                    }
+                    if(true===$plugin['required']){
+                        $total_required_action_count++;
                     }                    
                 }else{
                     if(! $this->is_plugin_active($slug)){
@@ -163,23 +200,25 @@ if(!class_exists('Azad_Plugin_Activation')){
                             }else{
                                 $message['notice_can_activate_recommended'][] = $slug;
                             }
-                            if(true===$plugin['required']){
-                                $total_required_action_count++;
-                            }
+                        }
+                        if(true===$plugin['required']){
+                            $total_required_action_count++;
                         }   
                     }
                 }                
             }
-
+            
             unset($slug,$plugin);
             // We have notices to display we will move forward...
-            if(!empty($message)){
+            if( ! empty($message) || $total_required_action_count > 0 ){
+                krsort($message);
                 $rendered = '';
                 $line_template = '<span style="display:block;margin:0.5em 0.5em 0 0 ;">%s</span>';
                 if(! current_user_can('install_plugins')){
                     $rendered = esc_html($this->strings['notice_cannot_install_activate'],'apa');
                 }else{
                     foreach($message as $type => $plugin_group){
+                        $linked_plugins = array();
                         foreach($plugin_group as $plugin_slug){
                             $linked_plugins[] = $this->get_info_link($plugin_slug);
                         }
@@ -203,18 +242,49 @@ if(!class_exists('Azad_Plugin_Activation')){
             }
             $this->display_settings_errors();
         }            
-        protected function create_user_action_links_for_notice($install_link_count,$update_link_count,$activate_link_count,$line_template){
+        protected function create_user_action_links_for_notice($install_count,$update_count,$activate_count,$line_template){
             // Setup action links
-            $link_template = '<a href="#">%1$s</a>';
+            $link_template = '<a href="%2$s">%1$s</a>';
             $action_links = array(
-                'install'=> '',
+                'install'=> 'hey',
                 'update'=> '',
                 'activate'=> '',
-                'dismiss'=> ''
+                'dismiss'=> $this->dismissable ? '<a href="#" class="dismiss-notice" target="_parent">' . esc_html($this->strings['dismiss']) . '</a> ': ''
             );
+            if(current_user_can('install_plugins')){
+                if($install_count>0){
+                    $action_links['install'] = sprintf(
+                        $link_template,
+                        translate_nooped_plural($this->strings['install_link'],$install_link,'apa'),
+                        'Link'
+                    );
+                }
+                if($update_count>0){
+                    $action_links['update'] = sprintf(
+                        $link_template,
+                        translate_nooped_plural($this->strings['update_link'],$install_link,'apa'),
+                        'Link'
+                    );
+                }
+            }
+            if(current_user_can('activate_plugins') && $activate_count > 0){
+                $action_links['activate'] = sprintf(
+                    $link_template,
+                    translate_nooped_plural($this->strings['activate_link'],$install_link,'apa'),
+                    'Link'
+                );
+            }
+            $action_links = apply_filters('apa_notice_action_links',$action_links);
+            $action_links = array_filter((array) $action_links);
+            if(!empty($action_links)){
+                $action_links = sprintf($line_template,implode(' | ',$action_links));
+                return apply_filters('apa_notice_rendered_action_links',$action_links);
+            }else{
+                return '';
+            }
         }
         protected function get_admin_notice_class(){
-            /*if(! empty($this->strings['nag_type'])){
+            if(! empty($this->strings['nag_type'])){
                 return sanitize_html_class(strtolower($this->strings['nag_type']));
             }else{
                 if ( version_compare( $this->wp_version, '4.2', '>=' ) ) {
@@ -224,14 +294,17 @@ if(!class_exists('Azad_Plugin_Activation')){
 				} else {
 					return 'updated';
 				}
-            }*/
-            return 'notice notice-warning';
+            }
         }
         protected function display_settings_errors(){
-            //global $wp_settings_errors;
+            global $wp_settings_errors;
             settings_errors('apa');
         }
-        public function dismiss(){}
+        public function dismiss(){
+            if(true){
+                echo 'Azad';
+            }
+        }
         public function register($plugin){
             if(empty($plugin['slug']) || empty($plugin['name'])){
                 return;
