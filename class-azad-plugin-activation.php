@@ -26,8 +26,8 @@ if(!class_exists('Azad_Plugin_Activation')){
         public $wp_version;        
         public $page_hook;
         public function __construct(){
+            $this->wp_version = $GLOBALS['wp_version'];
             add_action('init',array($this,'init'));
-            //$this->_get_plugin_basename_from_slug('akismet');
         }
         public function __set($name,$value){
             return;
@@ -42,47 +42,59 @@ if(!class_exists('Azad_Plugin_Activation')){
                 'installing' => __('Installing plugin','apa'),
                 'updating' => __('Updating plugin ','apa'),
                 'oops' => __('Something went wrong with the plugin api','apa'),
-                'notice_can_install_required' => __('This theme requires the following plugins.','apa'),
-                'notice_can_install_recommended' => __('Something went wrong with the plugin api','apa'),
+                /* Translators 1 */
+                'notice_can_install_required' => _n_noop(
+                    'This theme requires the following plugin: %1$s.',
+                    'This theme requires the following plugins: %1$s.',
+                    'apa'
+                ),
+                'notice_can_install_recommended' => _n_noop(
+                    'This theme recomends the following plugin: %1$s.',
+                    'This theme recomends the following plugins: %1$s.',
+                    'apa'
+                ),
                 'notice_ask_to_update' => __('Something went wrong with the plugin api','apa'),
                 'notice_ask_to_update_maybe' => __('Something went wrong with the plugin api','apa'),
-                'notice_can_activate_required' => __('Something went wrong with the plugin api','apa'),
-                'notice_can_activate_recommended' => __('Something went wrong with the plugin api','apa'),
-                'dashboard' => __('Return to the dashboard.','apa')
+                'notice_can_activate_required' => _n_noop(
+                    'This following required plugin is currently inactive: %1$s.',
+                    'This following required plugins are currently inactive: %1$s.',
+                    'apa'
+                ),
+                'notice_can_activate_recommended' => _n_noop(
+                    'This following recommended plugin is currently inactive: %1$s.',
+                    'This following recommended plugins are currently inactive: %1$s.',
+                    'apa'
+                ),
+                'dashboard' => __('Return to the dashboard.','apa'),
+                'notice_cannot_install_activate' => __('There are one or more required or recommended plugins to install, update or activate.','apa'),
+                'contact_admin' => __('Please contact the administrator of this site for help.','apa')
             );
             do_action('apa_register');
+            //echo $installed_plugins['gutenberg/gutenberg.php']['Name'];
+            $this->get_info_link($slug);
+            if(empty($this->plugins) || ! is_array($this->plugins)){
+                return;
+            }
             add_action('admin_notices',array($this,'notices'));
             add_action('admin_menu',array($this,'admin_menu'));
             add_action('admin_init',array($this,'admin_init'));
         }
-        public function load_textdomain(){
-            
-        }
-        public function correct_plugin_mofile(){
-            
-        }
-        public function overload_textdomain_mofile(){
-            
-        }
-        public function add_plugin_action_link_filters(){
-            
-        }
-        public function filter_plugin_action_links_activate(){
-            
-        }
-        public function filter_plugin_action_links_deactivate(){
-            
-        }
-        public function filter_plugin_action_links_update(){
-            
-        }
+        public function load_textdomain(){}
+        public function correct_plugin_mofile(){}
+        public function overload_textdomain_mofile(){}
+        public function add_plugin_action_link_filters(){}
+        public function filter_plugin_action_links_activate(){}
+        public function filter_plugin_action_links_deactivate(){}
+        public function filter_plugin_action_links_update(){}
         public function admin_init(){
-            
+            //echo 'Admin init';
         }        
-        public function thickbox(){
-            
-        }
+        public function thickbox(){}
         public function admin_menu(){
+            // Make sure previleges are correct to access the page.
+            if(! current_user_can('install_plugins')){
+                return;
+            }
             $args = apply_filters(
                 'apa_admin_menu_args',
                 array(
@@ -112,64 +124,114 @@ if(!class_exists('Azad_Plugin_Activation')){
                 <?php $plugin_table->display(); ?>
             </div>       
 <?php        }
-        public function do_plugin_install(){
-            
-        }
-        public function inject_update_info(){
-            
-        }
-        public function maybe_adjust_source_dir(){
-            
-        }
-        protected function activate_single_plugin(){
-            
-        }
+        public function do_plugin_install(){}
+        public function inject_update_info(){}
+        public function maybe_adjust_source_dir(){}
+        protected function activate_single_plugin(){}
         public function notices(){ 
             // Store for the plugin slugs by message type
             $message = array();
 
             // Initialize counters used to determine plurality of action link texts.
-            //$install_link_count = 0;
-            //$update_link_count = 0;
-            //$total_required_action_count = 0;
-            echo '<div class="notice updated is-dismissible"><p>';
+            $install_link_count = 0;
+            $update_link_count = 0;
+            $activate_link_count = 0;
+            $total_required_action_count = 0;
+
             if($this->is_apa_page()){
                 //return;
             }
             foreach($this->plugins as $slug=>$plugin){
-                //var_dump(is_plugin_active('akismet/akismet.php'));
-                if($this->is_plugin_installed($slug)){
+                if(! $this->is_plugin_installed($slug)){
                     if(current_user_can('install_plugins')){
                         $install_link_count++;
-                        if(true === $plugin['required']){
-                            echo $message['notice_can_install_required'][] = $slug;
+                        if(true===$plugin['required']){
+                            $message['notice_can_install_required'][] = $slug;
                         }else{
                             $message['notice_can_install_recommended'][] = $slug;
-                        }                    
-                    }
-                    if(true === $plugin['required']){
-                        $total_required_action_count++;
-                    }
+                        }
+                        if(true===$plugin['required']){
+                            $total_required_action_count++;
+                        }
+                    }                    
                 }else{
-                    echo 'No sir';
-                }               
+                    if(! $this->is_plugin_active($slug)){
+                        if(current_user_can('activate_plugins')){
+                            $activate_link_count++;
+                            if(true===$plugin['required']){
+                                $message['notice_can_activate_required'][] = $slug;
+                            }else{
+                                $message['notice_can_activate_recommended'][] = $slug;
+                            }
+                            if(true===$plugin['required']){
+                                $total_required_action_count++;
+                            }
+                        }   
+                    }
+                }                
             }
-            echo '</p></div>';
+
             unset($slug,$plugin);
-            $this->plugins['file_path']['version'];
+            // We have notices to display we will move forward...
+            if(!empty($message)){
+                $rendered = '';
+                $line_template = '<span style="display:block;margin:0.5em 0.5em 0 0 ;">%s</span>';
+                if(! current_user_can('install_plugins')){
+                    $rendered = esc_html($this->strings['notice_cannot_install_activate'],'apa');
+                }else{
+                    foreach($message as $type => $plugin_group){
+                        foreach($plugin_group as $plugin_slug){
+                            $linked_plugins[] = $this->get_info_link($plugin_slug);
+                        }
+                        unset($plugin_slug);
+                        $count = count($plugin_group);
+                        $linked_plugins = array_map(array('APA_Utils','wrap_in_em'),$linked_plugins);
+                        //$last_plugin = array_pop($linked_plugins);
+                        $imploded = empty($linked_plugins) ? $last_plugin : (implode(', ',$linked_plugins));
+                        $rendered .= sprintf(
+                            $line_template,
+                            sprintf(
+                                translate_nooped_plural($this->strings[$type],$count,'apa'),$imploded,$count
+                            )
+                        );
+                    }
+                    unset($type,$plugin_group,$linked_plugins,$count,$last_plugin,$imploded);
+                    $rendered .= $this->create_user_action_links_for_notice($install_link_count,$update_link_count,$activate_linkcount,$line_template);
+                }
+                // Register the nag messages and prepare them to be processed
+                add_settings_error('apa','apa',$rendered,$this->get_admin_notice_class());
+            }
+            $this->display_settings_errors();
         }            
-        protected function create_user_action_links_for_notice(){
-            
+        protected function create_user_action_links_for_notice($install_link_count,$update_link_count,$activate_link_count,$line_template){
+            // Setup action links
+            $link_template = '<a href="#">%1$s</a>';
+            $action_links = array(
+                'install'=> '',
+                'update'=> '',
+                'activate'=> '',
+                'dismiss'=> ''
+            );
         }
         protected function get_admin_notice_class(){
-            
+            /*if(! empty($this->strings['nag_type'])){
+                return sanitize_html_class(strtolower($this->strings['nag_type']));
+            }else{
+                if ( version_compare( $this->wp_version, '4.2', '>=' ) ) {
+					return 'notice notice-warning';
+				} elseif ( version_compare( $this->wp_version, '4.1', '>=' ) ) {
+					return 'notice';
+				} else {
+					return 'updated';
+				}
+            }*/
+            return 'notice notice-warning';
         }
         protected function display_settings_errors(){
-            
+            //global $wp_settings_errors;
+            settings_errors('apa');
         }
-        public function dismiss(){
-            
-        }
+        public function dismiss(){}
         public function register($plugin){
             if(empty($plugin['slug']) || empty($plugin['name'])){
                 return;
@@ -186,7 +248,7 @@ if(!class_exists('Azad_Plugin_Activation')){
                 'force_activation'      => false,       // Boolean
                 'force_deactivation'    => false,       // Boolean
                 'external_url'          => '',          // String
-                'is_callable'           => ''           // String
+                'is_callable'           => ''       // String
             );
             
             // Prepare the recieved data
@@ -195,22 +257,29 @@ if(!class_exists('Azad_Plugin_Activation')){
             // Standardize the recieved data
             $plugin['slug'] = $this->sanitize_key($plugin['slug']);
 
-            // Forgive users for using string versions boolean or floats for version number
-            $plugin['source']          = $plugin['version'];
-            $plugin['version']              = $plugin['version'];
-            $plugin['source']               = $plugin['source'];
+            // Forgive users for using string versions of boolean or floats for version number
+            $plugin['version']              = (string)$plugin['version'];
+            $plugin['source']               = empty($plugin['source'])?'repo':$plugin['source'];
             $plugin['required']             = $plugin['required'];
-            $plugin['force_activation']     = $plugin['force_activation'];
-            $plugin['force_deactivation']   = $plugin['force_deactivation'];
+            $plugin['force_activation']     = APA_Utils::validate_bool($plugin['force_activation']);
+            $plugin['force_deactivation']   = APA_Utils::validate_bool($plugin['force_deactivation']);
+
+            // Enrich the recieved data...
+            $plugin['file_path']    = $this->_get_plugin_basename_from_slug($plugin['slug']);
+            $plugin['source_type']  = $this->get_plugin_source_type($plugin['source']);
 
             // Set the class properties
             $this->plugins[$plugin['slug']] = $plugin;
-            //echo $plugin['file_path'] = $this->_get_plugin_basename_from_slug($plugin['slug']);
-            //var_dump($this->plugins);
-            //echo $this->sort_order[$plugin['slug']] = $plugin['name'];
+            $plugin['file_path'] = $this->_get_plugin_basename_from_slug($plugin['slug']);
+
+            $this->sort_order[$plugin['slug']] = $plugin['name'];
         }
-        protected function get_plugin_source_type(){
-            
+        protected function get_plugin_source_type($source){
+            if($source === 'repo'){
+              return 'repo';
+            }else{
+                return 'bundled';
+            }
         }
         public function sanitize_key($key){
             $raw_key = $key;
@@ -238,15 +307,9 @@ if(!class_exists('Azad_Plugin_Activation')){
             }
             //echo $config['id'];
         }
-        public function actions(){
-            
-        }
-        public function flush_plugins_cache(){
-            
-        }
-        public function populate_file_path(){
-            
-        }
+        public function actions(){}
+        public function flush_plugins_cache(){}
+        public function populate_file_path(){}
         protected function _get_plugin_basename_from_slug( $slug ) {
 			$keys = array_keys( $this->get_plugins() );
 			foreach ( $keys as $key ) {
@@ -256,85 +319,76 @@ if(!class_exists('Azad_Plugin_Activation')){
 			}
 			return $slug;
 		}
-        public function _get_plugin_data_from_name(){
-            
+        public function _get_plugin_data_from_name(){}
+        public function get_download_url($slug){
+            $dl_source = '';
+            switch(1){
+                case 'repo':
+                return;
+            }
+            return $dl_source;
         }
-        public function get_download_url(){
-            
-        }
-        protected function get_wp_repo_download_url(){
-            
-        }
-        protected function get_plugins_api(){
-            
-        }
-        public function get_info_link(){
-            
+        protected function get_wp_repo_download_url(){}
+        protected function get_plugins_api(){}
+        public function get_info_link($slug){
+            $link = $this->plugins[$slug]['name'];
+            $link = esc_html($link,'apa');
+            return $link;
         }
         protected function is_apa_page(){
             return isset($_GET['page']) && $this->menu === $_GET['page'];
         }
-        protected function is_core_update_page(){
-            
-        }
-        public function get_apa_url(){
-            
-        }
-        public function get_apa_status_url(){
-            
-        }
-        public function get_apa_complete(){
-            
+        protected function is_core_update_page(){}
+        public function get_apa_url(){}
+        public function get_apa_status_url(){}
+        public function is_apa_complete(){
+            $complete = true;
+            foreach( $this->plugins as $slug => $plugin ){
+                //echo $plugin['name'];
+                if(true){
+                    //echo 2;
+                }
+            }
+            return $complete;
         }
         public function is_plugin_installed($slug){
             $installed_plugins = $this->get_plugins(); // Retrieve a list of all installes plugins (WP Cached)
             return ( ! empty( $installed_plugins[ $this->plugins[ $slug ]['file_path'] ] ) );
         }
-        public function is_plugin_active(){
-            
+        public function is_plugin_active($slug){
+            return ( ( ! empty( $this->plugins[ $slug ]['is_callable'] ) && is_callable( $this->plugins[ $slug ]['is_callable'] ) ) || is_plugin_active( $this->plugins[ $slug ]['file_path'] ) );
         }
-        public function can_plugin_update(){
-            
-        }
-        public function is_plugin_updatable(){
-            
-        }
-        public function can_plugin_activate(){
-            
-        }
-        public function get_installed_version(){
-            
-        }
-        public function does_plugin_require_update(){
-            
-        }
-        public function does_plugin_have_update(){
-            
-        }
-        public function get_upgrade_notice(){
-            
-        }
+        public function can_plugin_update(){}
+        public function is_plugin_updatable(){}
+        public function can_plugin_activate(){}
+        public function get_installed_version(){}
+        public function does_plugin_require_update(){}
+        public function does_plugin_have_update(){}
+        public function get_upgrade_notice(){}
         public function get_plugins($plugin_folder=''){
             if(! function_exists('get_plugins')){
                 require_once(ABSPATH.'wp-admin/includes/plugin.php');
             }
             return get_plugins($plugin_folder);
         }
-        public function update_dismiss(){
-            
-        }
+        public function update_dismiss(){}
         public function force_activation(){
-            
+            foreach( $plugins as $slug => $plugin ){
+                if( true === $plugin['force_activation'] ){
+                    
+                }
+            }
         }
         public function force_deactivation(){
-            
+            $deactivated = array();
+            foreach( $plugins as $slug => $plugin ){
+                if( true === $plugin['force_activation'] ){
+                    
+                }
+            }
         }
-        public function show_apa_version(){
-            
-        }
-        public function admin_css(){
-            
-        }
+        public function show_apa_version(){}
+        public function admin_css(){}
         public static function get_instance(){
             if(! isset( self::$instance ) && ! ( self::$instance instanceof self ) ){
                 self::$instance = new self();
@@ -392,7 +446,7 @@ if(! class_exists('APA_List_Table')){
             array('id'=>3,'plugin'=>'Woo','source'=>'repo','type'=>'required')
         );
         public $view_context = 'all';
-        public $view_totals = array(
+        protected $view_totals = array(
             'all'       => 0,
             'install'   => 0,
             'update'    => 0,
@@ -420,27 +474,35 @@ if(! class_exists('APA_List_Table')){
             $plugins = $this->categorize_plugins_to_views();
 
             // Set the counts for the view links
-            $this->set_view_totals();
+            $this->set_view_totals($plugins);
 
             $table_data = array();
-            $id = 0;
+            $table_data = $plugins;
+            $i = 0;
+            foreach($plugins[$this->view_context] as $slug => $plugin ){
+                $table_data[$i]['slug']= $slug;
+                $i++;
+            }
             return $table_data;
         }
         protected function categorize_plugins_to_views(){
             $plugins = array(
-                'all'       => array(),
+                'all'       => array(), // Meaning: all plugins which still have open actons.
                 'install'   => array(),
                 'update'  => array(),
                 'activate'  => array()
             );
-            foreach($this->apa->plugins as $slug=>$plugin){
-
+            foreach( $this->apa->plugins as $slug => $plugin ){
+                $plugins['all'][$slug] = $plugin;
+            }
+            return $plugins;
+        }
+        protected function __set_view_totals($plugins){
+            foreach( $plugins as $type => $list ){
+                $this->view_totals[$type] = count($list);
             }
         }
-        /*protected function __set_view_totals(){
-            echo  esc_html__('No plugins to install, update or activate','apa').' <a href="'. esc_url(self_admin_url()) .'">' . esc_html($this->apa->strings['dashboard'],'apa') .'</a>';
-        }
-        protected function __get_plugin_advise_type_text(){
+        /*protected function __get_plugin_advise_type_text(){
             echo  esc_html__('No plugins to install, update or activate','apa').' <a href="'. esc_url(self_admin_url()) .'">' . esc_html($this->apa->strings['dashboard'],'apa') .'</a>';
         }
         protected function __get_plugin_source_type_text(){
@@ -457,7 +519,6 @@ if(! class_exists('APA_List_Table')){
         }*/
         public function column_default( $item,$column_name ){
             switch( $column_name ){
-                case 'id':
                 case 'plugin':
                 case 'source':
                 case 'type':
@@ -497,8 +558,7 @@ if(! class_exists('APA_List_Table')){
         public function get_columns(){
             $columns = array(
                 'cb'        => '<input type="checkbox" />',
-                'id'    => __('ID','apa'),
-                'plugin'      => __('Plugin','apa'),
+                'plugin'    => __('Plugin','apa'),
                 'source'    => __('Source','apa'),
                 'type'      => __('Type','apa'),
                 'status'      => __('Status','apa'),
@@ -520,15 +580,9 @@ if(! class_exists('APA_List_Table')){
             $actions = array();
             $action_links = array();
         }
-        public function _single_row($item){
-            
-        }
-        public function wp_plugin_update_row(){
-            
-        }
-        public function extra_tablenav($which){
-            
-        }
+        public function _single_row($item){}
+        public function wp_plugin_update_row(){}
+        public function extra_tablenav($which){}
         public function get_bulk_actions(){
             $actions = array(
                 'edit'=>'Edit',
@@ -536,9 +590,7 @@ if(! class_exists('APA_List_Table')){
             );
             return $actions;
         }
-        public function process_bulk_actions(){
-            
-        }
+        public function process_bulk_actions(){}
         public function get_hidden_columns(){
             //return array('id','name','email');
             return array();
@@ -557,61 +609,51 @@ if(! class_exists('APA_List_Table')){
             $hidden = $this->get_hidden_columns();
             $sortable = $this->get_sortable_columns();
             $primary = $this->get_primary_column_name();
-            $this->_column_headers = array($columns,$hidden,$sortable,$primary);
+            //$this->_column_headers = array($columns,$hidden,$sortable,$primary);
+            $this->_column_headers = array($columns);
 
             // Store all of our plugin data into items array so WP_List_Table can use it..
             $this->items = apply_filters('apa_table_data_items',$this->_gather_plugin_data());
         }
-        protected function get_plugin_data_form_name(){
-            
-        }
+        protected function get_plugin_data_form_name(){}
         public function __destruct(){}
     }
 }
 
+
 if(! class_exists('APA_Bulk_Installer')){
     class APA_Bulk_Installer{
-        public function __construct(){
-
-        }
-        public function __destruct(){
-            
-        }
+        public function __construct(){}
+        public function __destruct(){}
     }
 }
 
 if(! class_exists('APA_Bulk_Installer_Skin')){
     class APA_Bulk_Installer_Skin{
-        public function __construct(){
-
-        }
-        public function __destruct(){
-            
-        }
+        public function __construct(){}
+        public function __destruct(){}
     }
 }
 
 if(! class_exists('APA_Utils')){
     class APA_Utils{
-        public static $has_filtes;
-        public function __construct(){
-
+        public static $has_filters;
+        public function __construct(){}
+        public static function wrap_in_em($string){
+            return '<em>' . wp_kses_post($string) . '</em>';
         }
-        public static function wrap_in_em(){
-
+        public static function wrap_in_strong(){}
+        public static function validate_bool($value){
+            if(! isset(self::$has_filters)){
+                self::$has_filters = extension_loaded('filter');
+            }
+            if(self::$has_filters){
+                return filter_var($value,FILTER_VALIDATE_BOOLEAN);
+            }else{
+                return self::emulate_filter_bool($value);
+            }
         }
-        public static function wrap_in_strong(){
-
-        }
-        public static function validate_bool(){
-
-        }
-        protected static function emulate_filter_bool(){
-
-        }
-        public function __destruct(){
-            
-        }
+        protected static function emulate_filter_bool(){}
+        public function __destruct(){}
     }
 }
-
