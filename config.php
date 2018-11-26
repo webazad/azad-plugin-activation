@@ -18,11 +18,19 @@ function apa_plugins(){
         array(
             'name' => 'Wordpress Reset',
             'slug' => 'wordpress-reset',
+            'source' => 'azad',
             'required' => true
         ),
         array(
             'name' => 'Akismet',
             'slug' => 'akismet',
+            'version' => '2',
+            'required' => false
+        ),
+        array(
+            'name' => 'Woocommerce',
+            'slug' => 'woocommerce',
+            'version' => '2',
             'required' => true
         )
     );
@@ -41,4 +49,3 @@ function apa_plugins(){
     apa( $plugins, $config );
 }
 add_action('apa_register','apa_plugins');
-

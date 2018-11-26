@@ -86,6 +86,7 @@ if(!class_exists('Azad_Plugin_Activation')){
                 'contact_admin' => __('Please contact the administrator of this site for help.','apa')
             );
             do_action('apa_register');
+            //var_dump($this->get_plugins());
             // Write a function here..
             if(empty($this->plugins) || ! is_array($this->plugins)){
                 return;
@@ -229,9 +230,7 @@ if(!class_exists('Azad_Plugin_Activation')){
                         $imploded = empty($linked_plugins) ? $last_plugin : (implode(', ',$linked_plugins));
                         $rendered .= sprintf(
                             $line_template,
-                            sprintf(
-                                translate_nooped_plural($this->strings[$type],$count,'apa'),$imploded,$count
-                            )
+                            sprintf(translate_nooped_plural($this->strings[$type],$count,'apa'),$imploded,$count)
                         );
                     }
                     unset($type,$plugin_group,$linked_plugins,$count,$last_plugin,$imploded);
@@ -246,7 +245,7 @@ if(!class_exists('Azad_Plugin_Activation')){
             // Setup action links
             $link_template = '<a href="%2$s">%1$s</a>';
             $action_links = array(
-                'install'=> 'hey',
+                'install'=> '',
                 'update'=> '',
                 'activate'=> '',
                 'dismiss'=> $this->dismissable ? '<a href="#" class="dismiss-notice" target="_parent">' . esc_html($this->strings['dismiss']) . '</a> ': ''
@@ -297,8 +296,9 @@ if(!class_exists('Azad_Plugin_Activation')){
             }
         }
         protected function display_settings_errors(){
-            global $wp_settings_errors;
-            settings_errors('apa');
+            //global $wp_settings_errors;
+            //settings_errors('apa');
+            settings_errors();
         }
         public function dismiss(){
             if(true){
@@ -321,13 +321,13 @@ if(!class_exists('Azad_Plugin_Activation')){
                 'force_activation'      => false,       // Boolean
                 'force_deactivation'    => false,       // Boolean
                 'external_url'          => '',          // String
-                'is_callable'           => ''       // String
+                'is_callable'           => ''           // String
             );
             
             // Prepare the recieved data
             $plugin = wp_parse_args($plugin,$defaults);
-
             // Standardize the recieved data
+            $plugin['slug'];
             $plugin['slug'] = $this->sanitize_key($plugin['slug']);
 
             // Forgive users for using string versions of boolean or floats for version number
@@ -340,7 +340,7 @@ if(!class_exists('Azad_Plugin_Activation')){
             // Enrich the recieved data...
             $plugin['file_path']    = $this->_get_plugin_basename_from_slug($plugin['slug']);
             $plugin['source_type']  = $this->get_plugin_source_type($plugin['source']);
-
+            
             // Set the class properties
             $this->plugins[$plugin['slug']] = $plugin;
             $plugin['file_path'] = $this->_get_plugin_basename_from_slug($plugin['slug']);
