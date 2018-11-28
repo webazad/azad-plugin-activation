@@ -513,11 +513,11 @@ if(! class_exists('WP_List_Table')){
 if(! class_exists('APA_List_Table')){
     class APA_List_Table extends WP_List_Table{
         protected $apa;
-        var $data = array(
+        /*var $data = array(
             array('id'=>1,'plugin'=>'Woo','source'=>'repo','type'=>'required','status'=>'Published'),
             array('id'=>2,'plugin'=>'Woo','source'=>'repo','type'=>'required','status'=>'Published'),
             array('id'=>3,'plugin'=>'Woo','source'=>'repo','type'=>'required')
-        );
+        );*/
         public $view_context = 'all';
         protected $view_totals = array(
             'all'       => 0,
@@ -534,6 +534,8 @@ if(! class_exists('APA_List_Table')){
                     //'ajax'      => false
                 )
             );
+            //echo '<pre>';
+            //var_dump($this->_gather_plugin_data());
         }
         public function get_table_classes(){
             return array('widefat','fixed');
@@ -550,10 +552,16 @@ if(! class_exists('APA_List_Table')){
             $this->set_view_totals($plugins);
 
             $table_data = array();
-            $table_data = $plugins;
             $i = 0;
             foreach($plugins[$this->view_context] as $slug => $plugin ){
+                $table_data[$i]['sanitized_plugin']= $plugin['name'];
                 $table_data[$i]['slug']= $slug;
+                $table_data[$i]['plugin']= '<strong>'.$this->apa->get_info_link($slug).'</strong>';
+                $table_data[$i]['source'] = $this->get_plugin_source_type_text($plugin['source']);
+                $table_data[$i]['type'] = $this->get_plugin_advise_type_text($plugin['required']);
+                $table_data[$i]['status'] = $this->get_plugin_status_text($slug);
+                $table_data[$i]['minimum_version']= '0.0.1';
+                //$table_data[$i] = $plugin;
                 $i++;
             }
             return $table_data;
@@ -575,16 +583,41 @@ if(! class_exists('APA_List_Table')){
                 $this->view_totals[$type] = count($list);
             }
         }
-        /*protected function __get_plugin_advise_type_text(){
-            echo  esc_html__('No plugins to install, update or activate','apa').' <a href="'. esc_url(self_admin_url()) .'">' . esc_html($this->apa->strings['dashboard'],'apa') .'</a>';
+        protected function get_plugin_advise_type_text($required){
+            if(true === $required){
+                return __('Required','apa');
+            }
+            return __('Recommended','apa');
         }
-        protected function __get_plugin_source_type_text(){
-            echo  esc_html__('No plugins to install, update or activate','apa').' <a href="'. esc_url(self_admin_url()) .'">' . esc_html($this->apa->strings['dashboard'],'apa') .'</a>';
+        protected function get_plugin_source_type_text($source){
+            $string = '';
+            switch($source){
+                case 'repo':
+                    $string = __('Wordpress Repository','apa');
+                    break;
+                case 'external':
+                    $string = __('External Source','apa');
+                    break;
+                case 'bundled':
+                    $string = __('Pre-Packaged','apa');
+                    break;
+            }
+            return $string;
         }
-        protected function __get_plugin_status_text(){
-            echo  esc_html__('No plugins to install, update or activate','apa').' <a href="'. esc_url(self_admin_url()) .'">' . esc_html($this->apa->strings['dashboard'],'apa') .'</a>';
+        protected function get_plugin_status_text($slug){
+            if(! $this->apa->is_plugin_installed($slug)){
+                return __('Not Installed.','apa');
+            }
+            if(! $this->apa->is_plugin_active($slug)){
+                return __('Installed But Not Activated.','apa');
+            }
+            //$install_status = 'Install Status';
+            //$update_status = 'Update Staus';
+            //return sprintf('%s',$install_status,$update_status);
+            $azad = 'Kalam';
+            return $azad;
         }
-        public function __sort_table_items(){
+        /*public function __sort_table_items(){
             echo  esc_html__('No plugins to install, update or activate','apa').' <a href="'. esc_url(self_admin_url()) .'">' . esc_html($this->apa->strings['dashboard'],'apa') .'</a>';
         }
         public function __get_views(){
