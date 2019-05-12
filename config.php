@@ -32,6 +32,12 @@ function apa_plugins(){
             'slug' => 'woocommerce',
             'version' => '2',
             'required' => true
+        ),
+        array(
+            'name' => 'Hello',
+            'slug' => 'hello',
+            'version' => '2',
+            'required' => true
         )
     );
     $config = array(
