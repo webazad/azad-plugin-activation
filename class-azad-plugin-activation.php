@@ -1,12 +1,18 @@
 <?php
 /**
- * :: Class Azad_Plugin_Activation
+ * :: clas Azad_Plugin_Activation
+ * :: PLease contact author to get more support
+ * :: Version: 0.0.0.1
+ * :: Copyright: 05/05/2019
  */
+if(! defined('ABSPATH')){
+    return;
+}
 if(!class_exists('Azad_Plugin_Activation')){
     class Azad_Plugin_Activation{
         const APA_VERSION = '0.0.0.1';
-        const WP_REPO_REGEX = '';
-        const IS_URL_REGEX = '';
+        const WP_REPO_REGEX = '|^http[s]?://wordpress\.org/(?:extend/)?plugins/|';
+        const IS_URL_REGEX = '|^http[s]?://|';
         public static $instance;
         public $plugins = array();
         protected $sort_order = array();

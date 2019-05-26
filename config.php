@@ -1,14 +1,15 @@
 <?php
 /**
- * --------------------------------------------------------------
- * :: TO ADD AZAD PLUGIN ACTIVATION PLUGIN
- * --------------------------------------------------------------
+ * The code is to add azad plugin activation plugin in the functions.php file.
+ */
+/**
+ * Azad Plugin Activation.
  */
 /**
 if(file_exists(trailingslashit(dirname(__FILE__)).'inc/azad-plugin-activation/config.php')){
 	require_once(trailingslashit(dirname(__FILE__)).'inc/azad-plugin-activation/config.php');
 }
-*/
+ */
 // CALL THE CORE FILE 
 if(file_exists(trailingslashit(dirname(__FILE__)).'class-azad-plugin-activation.php')){
 	require_once(trailingslashit(dirname(__FILE__)).'class-azad-plugin-activation.php');
@@ -34,10 +35,10 @@ function apa_plugins(){
             'required' => true
         ),
         array(
-            'name' => 'Hello',
-            'slug' => 'hello',
-            'version' => '2',
-            'required' => true
+            'name'      => 'Elementor',
+            'slug'      => 'elementor',
+            'source'    => 'asdf',
+            'required'  => true
         )
     );
     $config = array(
